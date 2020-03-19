@@ -107,7 +107,7 @@ set prefix [concat ${prefix}_]
 
     puts $fileid $outstr
 
-    save model mymodel.xcm
+    save model ${prefix}xspec_mo.xcm
 
     close $fileid
 
@@ -155,12 +155,29 @@ scan [tcloutr compinfo $comp] "%s %f %f" comp_name tmp tmp
 
 set flux_name [concat ${comp_name}_${elow}_${ehi}]
 
-rm -f ./tmp.xcm
-save model ./tmp.xcm
-sed '/^mdefine/ d' ./tmp.xcm > ./tmp_2.xcm
+echo 'creating starting file'
+
+
+rm -f tmp.xcm
+
+save model tmp.xcm
+
+sed '/^mdefine/ d' tmp.xcm > tmp_2.xcm  && rm tmp.xcm && mv tmp_2.xcm tmp.xcm
+#&& sed '/mul/ s/$/ :/' ./tmp.xcm > ./tmp_2.xcm
+
+#rm  -f tmp.xcm
+#echo 'line 1'
+#save model tmp.xcm
+#echo 'line 2'
+#sed '/^mdefine/ d' tmp.xcm > tmp_2.xcm
+#echo 'line 3'
 #sed '/mul/ s/$/ :/' ./tmp.xcm > ./tmp_2.xcm
-rm ./tmp.xcm
-mv ./tmp_2.xcm ./tmp.xcm
+#rm tmp.xcm
+#echo 'line 4'
+#mv tmp_2.xcm tmp.xcm
+echo 'end creating of starting file'
+
+
 
 #chi square of an initial model to see if chi2 changes
 tclout dof
@@ -181,6 +198,11 @@ set chi_r_init [format "%.3f" [expr {$stat/$dof}]]
         if {$pname=="norm"} {
         freeze $ipar
         }
+        if {$pname=="lg10Flux"} {
+        echo 'cflux has alredy been applied!'
+        puts $stopvarname
+        exit
+        }
 
 }
 
@@ -190,6 +212,10 @@ addcomp $comp cflux
 $elow
 $ehi
 $logF
+
+
+
+
 
 
 fit 1000
@@ -205,9 +231,12 @@ fit 1000
 }
 #second iteration: use obtained flux as an initial value
 set logF [tcloutr par $ipar_flux]
+
+echo 'OPENING INITIAL MODEL AGAIN TO USE NEW FIRST GUESS!'
+cat tmp.xcm
 @tmp.xcm
 
-fit
+
 fit 1000
 
 #iterate over parameters and freeze if it is a norm
@@ -226,6 +255,12 @@ $ehi
 $logF
 
 
+
+
+
+
+
+
 fit 1000
 
 tclout dof
@@ -239,8 +274,10 @@ set dof [lindex $dof 0]
 set chi_r_final [format "%.3f" [expr {$stat/$dof}]]
 #if difference between chi2 values is greater than 0.005, throw an error
 if {[expr {abs($chi_r_final-$chi_r_init)}]>0.005} {
-    @tmp.xcm
-    fit 1000
+    #@tmp.xcm
+    #fit 1000
+    echo 'chi 2 comaprison failed'
+    throw {what} {'chi 2 comparison failed'}
     puts $stopvarname
     exit
     }
@@ -252,7 +289,7 @@ set flux $xspec_tclout
 tclout error $ipar_flux
 set flux_err $xspec_tclout
 
-
+echo 'loading starting file'
 @tmp.xcm
 
 
